@@ -1,22 +1,23 @@
-# AI 額度口袋 Windows 試用版
+# AI 額度口袋 Windows 0.2.0
 
-小工具會浮在主要螢幕的右下角、Windows 工具列上方，顯示 ChatGPT 帳號的 Codex 額度和 Claude 額度。各自列出當期及每週剩餘比例，以及官方頁面提供的重置時間。
+顯示 ChatGPT 帳號的 Codex 額度和 Claude 額度。小視窗靠在 Windows 工具列上方，可收合至通知區。
 
 ## 第一次使用
 
-1. 將整個 ZIP 解壓到保留的位置，開啟 `QuotaPocket.exe`。
-2. 點小工具右上角的 **⋯ → 設定 Chrome**。程式會為目前 Windows 使用者註冊本機連接程式，並複製擴充功能資料夾的路徑。
-3. 在開啟的 Chrome 擴充功能頁打開「開發人員模式」，按「載入未封裝項目」，貼上路徑，選取 `Chrome` 資料夾。
-4. 從小工具的 **⋯** 選單開啟兩個用量頁。在已安裝擴充功能的同一個 Chrome 個人資料中登入，讓官方用量頁保持開啟。Chrome 每 5 分鐘重新讀取，兩個分頁可以移到背景。
+1. [下載 ZIP](../downloads/ai-quota-pocket-windows-0.2.0.zip?raw=true)，解壓後開啟 `QuotaPocket.exe`。
+2. 從 **⋯** 選 **連接 Codex** 或 **連接 Claude**。需要先安裝各家的官方工具。若電腦找不到工具，小視窗會顯示官網安裝說明。
+3. 依官方工具的指示登入自己的訂閱帳號。首次授權可能會開啟瀏覽器。若官方工具已登入，啟動小視窗便會讀取。
 
-要暫時收合，點 **⋯ → 收合至通知區**，再點時鐘旁的圖示可重新顯示。如果找不到圖示，請查看通知區的隱藏圖示。
+安裝來源可見 [Codex CLI](https://learn.chatgpt.com/docs/cli) 和 [Claude Code for Windows](https://code.claude.com/docs/en/setup)。本版本使用原生 `codex.exe` 和 `claude.exe`。若安裝後小工具仍顯示「未安裝」，可重新開啟小工具。自訂安裝位置可用 `QUOTA_POCKET_CODEX` 和 `QUOTA_POCKET_CLAUDE` 指定執行檔的完整路徑。
 
-擴充功能只在兩個服務的用量頁擷取額度。Windows 小工具在本機快取百分比、重置時間和更新時間。Chrome 關閉或讀取中斷時，小工具保留最後讀到的數字，並在快照超過 20 分鐘時標示過期。沒有查到某一週期時會顯示「—」。
+## 額度更新
 
-移動資料夾後，請重新執行「設定 Chrome」，並在 Chrome 從新位置載入擴充功能。
+- 開啟時讀取，之後每 5 分鐘更新。選 **⋯ → 立即更新** 可手動讀取。瀏覽器授權完成後，平時可關閉瀏覽器。
+- Codex 透過本機 App Server 的 `account/rateLimits/read` 取得整體額度。Claude 使用原生 Claude Code 的 `/usage`，依訂閱回傳的週期顯示資料。
+- 缺少的週期會顯示「—」。暫時斷線時保留這次啟動期間最後讀到的數字，超過 20 分鐘會標成過期。程式在記憶體保留比例及時間，登入憑證由各家官方工具管理。
 
-## 由原始碼建置
+## 開發
 
-在 Windows 的 PowerShell 執行 `./windows/build.ps1`。建置使用 Windows 隨附的 .NET Framework C# 編譯器，輸出位於 `windows/dist/`。
+在 Windows PowerShell 執行 `./windows/build.ps1`。建置使用 Windows 隨附的 .NET Framework C# 編譯器，輸出到 `windows/dist/QuotaPocket.exe`。
 
-支援的百分比格式和 Chrome 資料流可用範例資料驗證。執行 `node windows/tests/smoke-extension.cjs`。
+執行 `./windows/test.ps1` 可用模擬的官方工具回覆檢查配額換算、登入狀態、讀取逾時與小視窗顯示。

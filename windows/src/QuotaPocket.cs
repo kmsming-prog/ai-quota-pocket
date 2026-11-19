@@ -1,18 +1,18 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using Microsoft.Win32;
 
 internal static class Program
 {
     [STAThread]
     private static void Main(string[] args)
     {
-        using (var instance = new Mutex(false, @"Local\KangQuotaPocketWindow"))
+        using (var instance = new Mutex(false, @"Local\KangQuotaPocketDirectWindow"))
         {
             try { if (!instance.WaitOne(0)) return; }
             catch (AbandonedMutexException) { }
@@ -42,6 +42,11 @@ internal sealed class QuotaPocket : Form
     private readonly QuotaCard claude;
     private readonly Label footer;
     private readonly bool demo;
+    private readonly Dictionary<QuotaSource, QuotaSnapshot> snapshots = new Dictionary<QuotaSource, QuotaSnapshot>();
+    private readonly Dictionary<QuotaSource, string> status = new Dictionary<QuotaSource, string>();
+    private readonly HashSet<QuotaSource> reading = new HashSet<QuotaSource>();
+    private readonly HashSet<QuotaSource> signingIn = new HashSet<QuotaSource>();
+    private DateTime nextUpdate;
 
     internal QuotaPocket(bool demo)
     {
@@ -79,9 +84,9 @@ internal sealed class QuotaPocket : Form
         menu = new ContextMenuStrip();
         var show = menu.Items.Add("收合至通知區", null, (sender, e) => ToggleVisibility());
         menu.Opening += (sender, e) => show.Text = Visible ? "收合至通知區" : "顯示小工具";
-        menu.Items.Add("設定 Chrome", null, (sender, e) => ConnectChrome());
-        menu.Items.Add("開啟 Codex 用量頁", null, (sender, e) => OpenUsage(QuotaData.CodexUrl));
-        menu.Items.Add("開啟 Claude 用量頁", null, (sender, e) => OpenUsage(QuotaData.ClaudeUrl));
+        menu.Items.Add("連接 Codex", null, async (sender, e) => await Connect(QuotaSource.Codex));
+        menu.Items.Add("連接 Claude", null, async (sender, e) => await Connect(QuotaSource.Claude));
+        menu.Items.Add("立即更新", null, async (sender, e) => await RefreshQuotas());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("結束", null, (sender, e) => Close());
         options.Click += (sender, e) => menu.Show(options, new Point(options.Width, options.Height), ToolStripDropDownDirection.AboveLeft);
@@ -89,8 +94,13 @@ internal sealed class QuotaPocket : Form
         tray = new NotifyIcon { Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath), Text = Text, ContextMenuStrip = menu, Visible = true };
         tray.MouseClick += (sender, e) => { if (e.Button == MouseButtons.Left) ToggleVisibility(); };
 
-        timer.Tick += (sender, e) => { DockToCorner(); RefreshQuotas(); };
-        Shown += (sender, e) => { DockToCorner(); RefreshQuotas(); timer.Start(); };
+        timer.Tick += async (sender, e) =>
+        {
+            DockToCorner();
+            RenderQuotas();
+            if (DateTime.UtcNow >= nextUpdate) await RefreshQuotas();
+        };
+        Shown += async (sender, e) => { DockToCorner(); timer.Start(); await RefreshQuotas(); };
         FormClosed += (sender, e) => { timer.Dispose(); tray.Dispose(); menu.Dispose(); };
     }
 
@@ -112,48 +122,58 @@ internal sealed class QuotaPocket : Form
         }
     }
 
-    private void RefreshQuotas()
+    private async Task RefreshQuotas()
     {
-        QuotaSnapshot[] items = new QuotaSnapshot[0];
+        nextUpdate = DateTime.UtcNow.AddMinutes(5);
         if (demo)
         {
-            items = new[] {
-                DemoItem("chatgpt", 73, 88, 70, 3600),
-                DemoItem("claude", 82, 61, 183, 5200)
-            };
+            snapshots[QuotaSource.Codex] = DemoItem("chatgpt", 73, 88, 70, 3600);
+            snapshots[QuotaSource.Claude] = DemoItem("claude", 82, 61, 183, 5200);
+            RenderQuotas();
+            return;
         }
-        else if (File.Exists(QuotaData.CacheFile))
-        {
-            try
-            {
-                using (var stream = File.Open(QuotaData.CacheFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
-                using (var reader = new StreamReader(stream))
-                    if (stream.Length <= 8192) items = QuotaData.Parse(reader.ReadToEnd()).snapshots;
-            }
-            catch (IOException) { }
-            catch (FormatException) { }
-            catch (ArgumentException) { }
-        }
-        QuotaSnapshot codexItem = items.FirstOrDefault(item => item.provider == "chatgpt");
-        QuotaSnapshot claudeItem = items.FirstOrDefault(item => item.provider == "claude");
-        chatgpt.Display(codexItem);
-        claude.Display(claudeItem);
-        if (demo) footer.Text = "示範資料";
-        else if (items.Length == 0) footer.Text = "從 ⋯ 選單設定 Chrome，再開啟官方用量頁";
-        else
-        {
-            string coder = ReadTime("Codex", codexItem);
-            string writer = ReadTime("Claude", claudeItem);
-            footer.Text = "更新  " + coder + "  ·  " + writer;
-        }
+        await Task.WhenAll(Update(QuotaSource.Codex), Update(QuotaSource.Claude));
     }
 
-    private static string ReadTime(string label, QuotaSnapshot item)
+    private async Task Update(QuotaSource service)
     {
-        if (item == null) return label + " 等待讀取";
+        if (signingIn.Contains(service) || !reading.Add(service)) return;
+        status[service] = "讀取中";
+        RenderQuotas();
+        try
+        {
+            snapshots[service] = await Task.Run(() => service.Read());
+            status.Remove(service);
+        }
+        catch (QuotaReadException failure)
+        {
+            status[service] = failure.Message;
+            if (failure.Message == "請登入" || failure.Message == "未安裝") snapshots.Remove(service);
+        }
+        catch (Exception) { status[service] = "讀取失敗"; }
+        finally { reading.Remove(service); RenderQuotas(); }
+    }
+
+    private void RenderQuotas()
+    {
+        if (IsDisposed || Disposing) return;
+        QuotaSnapshot codexItem, claudeItem;
+        snapshots.TryGetValue(QuotaSource.Codex, out codexItem);
+        snapshots.TryGetValue(QuotaSource.Claude, out claudeItem);
+        chatgpt.Display(codexItem);
+        claude.Display(claudeItem);
+        footer.Text = demo ? "示範資料" :
+            ReadStatus(QuotaSource.Codex, codexItem) + "  ·  " + ReadStatus(QuotaSource.Claude, claudeItem);
+    }
+
+    private string ReadStatus(QuotaSource service, QuotaSnapshot item)
+    {
+        string message;
+        if (status.TryGetValue(service, out message)) return service.Label + " " + message;
+        if (item == null) return service.Label + " 等待讀取";
         DateTime lastRead = QuotaData.Epoch.AddMilliseconds(item.observedAt);
         string format = lastRead.ToLocalTime().Date == DateTime.Today ? "HH:mm" : "M/d HH:mm";
-        return label + " " + lastRead.ToLocalTime().ToString(format);
+        return service.Label + " " + lastRead.ToLocalTime().ToString(format);
     }
 
     private static QuotaSnapshot DemoItem(string provider, int session, int weekly, int sessionMinutes, int weeklyMinutes)
@@ -168,51 +188,41 @@ internal sealed class QuotaPocket : Form
         };
     }
 
-    private void ConnectChrome()
+    private async Task Connect(QuotaSource service)
     {
+        if (demo || signingIn.Contains(service)) return;
+        if (reading.Contains(service))
+        {
+            MessageBox.Show(this, "正在讀取 " + service.Label + " 額度，請稍候再連接。", Text);
+            return;
+        }
+        bool wasSigningIn;
         try
         {
-            string chrome = FindChrome();
-            string extension = Path.Combine(QuotaData.Folder, "Chrome");
-            string bridge = Path.Combine(QuotaData.Folder, "QuotaPocketBridge.exe");
-            if (!File.Exists(bridge) || !File.Exists(Path.Combine(extension, "manifest.json")))
-                throw new FileNotFoundException("請把 ZIP 完整解壓，再開啟小工具。");
-
-            string manifest = Path.Combine(QuotaData.Folder, "native-host.json");
-            File.WriteAllText(manifest, QuotaData.Json.Serialize(new {
-                name = QuotaData.HostName, description = "AI Quota Pocket for Windows",
-                path = bridge, type = "stdio", allowed_origins = new[] { "chrome-extension://" + QuotaData.ExtensionId + "/" }
-            }));
-            using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Google\Chrome\NativeMessagingHosts\" + QuotaData.HostName))
-                key.SetValue("", manifest, RegistryValueKind.String);
-
-            Clipboard.SetText(extension);
-            MessageBox.Show(this, "已複製擴充功能資料夾路徑。\n\n在即將開啟的 Chrome 擴充功能頁，開啟「開發人員模式」，點「載入未封裝項目」，貼上路徑並選取資料夾。\n\n接著從小工具的 ⋯ 選單開啟兩個用量頁。", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
-            Process.Start(chrome, "chrome://extensions/");
+            string executable = service.FindExecutable();
+            if (executable == null)
+            {
+                if (MessageBox.Show(this, "請先安裝官方 " + (service == QuotaSource.Claude ? "Claude Code" : "Codex CLI") +
+                    "。要開啟安裝說明嗎？", Text, MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                    Process.Start(service.InstallUrl);
+                return;
+            }
+            signingIn.Add(service);
+            snapshots.Remove(service);
+            status[service] = "登入中";
+            RenderQuotas();
+            using (var login = Process.Start(new ProcessStartInfo(executable, service.LoginArguments) { UseShellExecute = true }))
+                await Task.Run(() => login.WaitForExit());
         }
-        catch (Exception error)
+        catch (Exception)
         {
-            MessageBox.Show(this, error.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, "無法開啟 " + service.Label + " 登入。請檢查官方命令列工具。", Text);
         }
-    }
-
-    private void OpenUsage(string url)
-    {
-        try { Process.Start(FindChrome(), url); }
-        catch (Exception error) { MessageBox.Show(this, error.Message, Text); }
-    }
-
-    private static string FindChrome()
-    {
-        var roots = new[] { Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) };
-        foreach (string root in roots)
+        finally
         {
-            string candidate = Path.Combine(root, @"Google\Chrome\Application\chrome.exe");
-            if (File.Exists(candidate)) return candidate;
+            wasSigningIn = signingIn.Remove(service);
         }
-        throw new FileNotFoundException("找不到 Chrome。請先安裝電腦版 Google Chrome。");
+        if (wasSigningIn && !IsDisposed) await Update(service);
     }
 
     internal static Label AddLabel(Control parent, string text, int x, int y, int width, int height,
