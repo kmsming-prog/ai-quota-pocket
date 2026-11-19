@@ -1,0 +1,20 @@
+{
+  "snapshots": [
+    {
+      "provider": "chatgpt",
+      "observedAt": 1795233600000,
+      "windows": [
+        {"id": "session", "remainingPct": 73, "resetAt": 1795240800000, "resetText": ""},
+        {"id": "weekly", "remainingPct": 88, "resetAt": 1795665600000, "resetText": ""}
+      ]
+    },
+    {
+      "provider": "claude",
+      "observedAt": 1795233600000,
+      "windows": [
+        {"id": "session", "remainingPct": 82, "resetAt": 1795244400000, "resetText": ""},
+        {"id": "weekly", "remainingPct": 61, "resetAt": null, "resetText": "Friday at 4:00 PM"}
+      ]
+    }
+  ]
+}

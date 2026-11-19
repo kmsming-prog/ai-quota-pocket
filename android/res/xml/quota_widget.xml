@@ -1,0 +1,2 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android" android:minWidth="110dp" android:minHeight="54dp" android:targetCellWidth="2" android:targetCellHeight="1" android:minResizeWidth="110dp" android:minResizeHeight="54dp" android:resizeMode="horizontal" android:updatePeriodMillis="0" android:initialLayout="@layout/quota_widget" android:previewLayout="@layout/quota_widget" android:description="@string/widget_description" android:widgetCategory="home_screen"/>
+

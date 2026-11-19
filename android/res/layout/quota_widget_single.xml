@@ -1,0 +1,65 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:contentDescription="額度口袋，點一下刷新"
+    android:orientation="vertical"
+    android:padding="2dp">
+
+    <LinearLayout
+        android:id="@id/gpt_card"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingStart="3dp"
+        android:paddingEnd="3dp">
+
+        <TextView
+            android:id="@id/gpt_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="ChatGPT"
+            android:textColor="#EEF3FA"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@id/gpt_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="—"
+            android:textColor="#75E2BE"
+            android:textSize="21sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@id/gpt_bar"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_marginBottom="2dp"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/bar_empty"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@id/gpt_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="尚未連接"
+            android:textColor="#BFCBDA"
+            android:textSize="9sp" />
+    </LinearLayout>
+</LinearLayout>

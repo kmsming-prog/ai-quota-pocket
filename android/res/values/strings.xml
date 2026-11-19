@@ -1,0 +1,5 @@
+<resources>
+    <string name="widget_description">2×1，顯示 ChatGPT 與 Claude 的剩餘百分比及重置時間。</string>
+    <string name="single_widget_name">額度口袋 1×1</string>
+    <string name="single_widget_description">1×1，顯示一項服務的剩餘百分比與重置時間。</string>
+</resources>

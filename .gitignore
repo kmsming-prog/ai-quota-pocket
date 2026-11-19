@@ -1,0 +1,11 @@
+/.build/
+/windows/dist/
+/android/dist/
+*.keystore
+*.jks
+.env
+.env.*
+local.properties
+native-host.json
+quota-cache.json
+quota-cache.json.new

@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "AI Quota Pocket for Windows",
+  "version": "0.1.0",
+  "description": "Displays Codex and Claude quotas on your Windows desktop.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2Rbfn5GkwDWVRIHV7xecsazVfdTgYZRwoiIk4BIKE2OCP/Pn/iPTan3hNm1ykSkXNtQTny2qkQx7yaoSzHG2BglBbUxlQ/2gZTzbipbJH2lEdivKVLrrH2ENAeW7hNK+cXPTAOkFrLxX2IxQGQRG5aCZWZoFTzjryvSn/b52wLrZxaEN4YebI85jgtrrRGbygQE5LFlobEeNhdhdJS3P6qbsWXgWY9DsyqEuGiB2UlodTGEi3s9Dl8WG/yBl8lunphLgPqoPfXQdfzi1E/5ZR+9XNnR5+2DitzI69jZ1NYkJeMGox/RuJ8VKFkG6tpHDpdJfIuptNlik847sFHk+3QIDAQAB",
+  "permissions": [
+    "storage",
+    "alarms",
+    "nativeMessaging"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "128": "icon-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/codex/settings/usage*",
+        "https://chatgpt.com/codex/cloud/settings/analytics*",
+        "https://chatgpt.com/settings/usage*",
+        "https://claude.ai/settings/usage*"
+      ],
+      "js": [
+        "reader.js",
+        "collect.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
