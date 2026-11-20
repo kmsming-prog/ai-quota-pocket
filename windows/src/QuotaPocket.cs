@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,15 +44,24 @@ internal sealed class QuotaPocket : Form
     private readonly QuotaCard claude;
     private readonly Label footer;
     private readonly bool demo;
+    private readonly string positionFile;
     private readonly Dictionary<QuotaSource, QuotaSnapshot> snapshots = new Dictionary<QuotaSource, QuotaSnapshot>();
     private readonly Dictionary<QuotaSource, string> status = new Dictionary<QuotaSource, string>();
     private readonly HashSet<QuotaSource> reading = new HashSet<QuotaSource>();
     private readonly HashSet<QuotaSource> signingIn = new HashSet<QuotaSource>();
     private DateTime nextUpdate;
+    private Control dragControl;
+    private Point dragPointer;
+    private Point dragOrigin;
 
-    internal QuotaPocket(bool demo)
+    internal QuotaPocket(bool demo) : this(demo, demo ? null : Path.Combine(QuotaData.StorageDirectory, "window-position.txt"))
+    {
+    }
+
+    internal QuotaPocket(bool demo, string positionFile)
     {
         this.demo = demo;
+        this.positionFile = positionFile;
         Text = "AI 額度口袋";
         Font = new Font("Microsoft JhengHei UI", 9F);
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -63,7 +74,10 @@ internal sealed class QuotaPocket : Form
         TopMost = true;
         ClientSize = new Size(392, 159);
 
-        AddLabel(this, Text, 12, 7, 280, 28, 11f, FontStyle.Bold, Foreground);
+        var title = AddLabel(this, Text, 12, 7, 320, 28, 11f, FontStyle.Bold, Foreground);
+        title.Cursor = Cursors.SizeAll;
+        EnableDrag(title);
+        EnableDrag(this);
         var options = new Button
         {
             Text = "⋯", AccessibleName = "小工具選單", Location = new Point(346, 5),
@@ -88,6 +102,7 @@ internal sealed class QuotaPocket : Form
         menu.Items.Add("連接 Codex", null, async (sender, e) => await Connect(QuotaSource.Codex));
         menu.Items.Add("連接 Claude", null, async (sender, e) => await Connect(QuotaSource.Claude));
         menu.Items.Add("立即更新", null, async (sender, e) => await RefreshQuotas());
+        menu.Items.Add("重設位置", null, (sender, e) => { Location = DefaultPosition(); SavePosition(); });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("結束", null, (sender, e) => Close());
         options.Click += (sender, e) => menu.Show(options, new Point(options.Width, options.Height), ToolStripDropDownDirection.AboveLeft);
@@ -97,20 +112,104 @@ internal sealed class QuotaPocket : Form
 
         timer.Tick += async (sender, e) =>
         {
-            DockToCorner();
+            if (Visible && dragControl == null) KeepOnScreen();
             RenderQuotas();
             if (DateTime.UtcNow >= nextUpdate) await RefreshQuotas();
         };
-        Shown += async (sender, e) => { DockToCorner(); timer.Start(); await RefreshQuotas(); };
-        FormClosed += (sender, e) => { timer.Dispose(); tray.Dispose(); menu.Dispose(); };
+        Load += (sender, e) => RestorePosition();
+        Shown += async (sender, e) => { timer.Start(); await RefreshQuotas(); };
+        FormClosed += (sender, e) => { SavePosition(); timer.Dispose(); tray.Dispose(); menu.Dispose(); };
     }
 
     protected override bool ShowWithoutActivation { get { return true; } }
 
-    private void DockToCorner()
+    private void EnableDrag(Control handle)
+    {
+        handle.MouseDown += (sender, e) =>
+        {
+            if (e.Button != MouseButtons.Left) return;
+            dragControl = handle;
+            dragPointer = handle.PointToScreen(e.Location);
+            dragOrigin = Location;
+            handle.Capture = true;
+        };
+        handle.MouseMove += (sender, e) =>
+        {
+            if (dragControl != handle) return;
+            Point pointer = handle.PointToScreen(e.Location);
+            Location = new Point(dragOrigin.X + pointer.X - dragPointer.X, dragOrigin.Y + pointer.Y - dragPointer.Y);
+        };
+        handle.MouseUp += (sender, e) =>
+        {
+            if (e.Button == MouseButtons.Left) FinishDrag(handle);
+        };
+        handle.MouseCaptureChanged += (sender, e) =>
+        {
+            if (!handle.Capture) FinishDrag(handle);
+        };
+    }
+
+    private void FinishDrag(Control handle)
+    {
+        if (dragControl != handle) return;
+        dragControl = null;
+        handle.Capture = false;
+        KeepOnScreen();
+        if (Location != dragOrigin) SavePosition();
+    }
+
+    private Point DefaultPosition()
     {
         Rectangle area = Screen.PrimaryScreen.WorkingArea;
-        Location = new Point(Math.Max(area.Left, area.Right - Width - 12), Math.Max(area.Top, area.Bottom - Height - 10));
+        return FitPosition(new Point(area.Right - Width - 12, area.Bottom - Height - 10), Size, area);
+    }
+
+    internal static Point FitPosition(Point location, Size size, Rectangle area)
+    {
+        return new Point(
+            Math.Max(area.Left, Math.Min(location.X, area.Right - size.Width)),
+            Math.Max(area.Top, Math.Min(location.Y, area.Bottom - size.Height)));
+    }
+
+    private void KeepOnScreen()
+    {
+        Point fitted = FitPosition(Location, Size, Screen.FromRectangle(Bounds).WorkingArea);
+        if (Location != fitted) Location = fitted;
+    }
+
+    private void RestorePosition()
+    {
+        Location = DefaultPosition();
+        if (positionFile == null) return;
+        try
+        {
+            using (var reader = File.OpenText(positionFile))
+            {
+                if (reader.BaseStream.Length > 64) return;
+                string[] coordinates = reader.ReadToEnd().Split(',');
+                int x, y;
+                if (coordinates.Length == 2 &&
+                    Int32.TryParse(coordinates[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out x) &&
+                    Int32.TryParse(coordinates[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out y))
+                {
+                    Location = FitPosition(new Point(x, y), Size, Screen.FromPoint(new Point(x, y)).WorkingArea);
+                }
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
+    private void SavePosition()
+    {
+        if (positionFile == null) return;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(positionFile));
+            File.WriteAllText(positionFile, string.Format(CultureInfo.InvariantCulture, "{0},{1}", Left, Top));
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     private void ToggleVisibility()
@@ -118,7 +217,7 @@ internal sealed class QuotaPocket : Form
         if (Visible) Hide();
         else
         {
-            DockToCorner();
+            KeepOnScreen();
             Show();
         }
     }

@@ -1,7 +1,11 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
 using System.Windows.Forms;
 
 internal static class QuotaSourcesSmoke
@@ -74,6 +78,7 @@ internal static class QuotaSourcesSmoke
 
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+        CheckWindowPosition();
         using (var install = QuotaPocket.CreateClaudeInstallDialog())
         {
             var command = install.Controls.OfType<TextBox>().Single();
@@ -111,6 +116,61 @@ internal static class QuotaSourcesSmoke
         }
         Console.WriteLine("Codex RPC, Claude stream JSON, missing plan windows, authentication states, timeout, and widget rendering passed.");
         return 0;
+    }
+
+    private static void CheckWindowPosition()
+    {
+        var secondMonitor = new Rectangle(-1280, 0, 1280, 760);
+        var windowSize = new Size(392, 159);
+        if (QuotaPocket.FitPosition(new Point(-700, 110), windowSize, secondMonitor) != new Point(-700, 110) ||
+            QuotaPocket.FitPosition(new Point(-20, 750), windowSize, secondMonitor) != new Point(-392, 601))
+            throw new Exception("Position clamping failed for a display left of the primary monitor.");
+
+        string path = Path.Combine(Path.GetTempPath(), "quota-pocket-position-" + Guid.NewGuid().ToString("N") + ".txt");
+        try
+        {
+            Rectangle area = Screen.PrimaryScreen.WorkingArea;
+            Point restored, moved;
+            using (var widget = new QuotaPocket(true, path))
+            {
+                restored = QuotaPocket.FitPosition(new Point(area.Left + 30, area.Top + 20), widget.Size, area);
+                File.WriteAllText(path, restored.X + "," + restored.Y);
+                widget.Show();
+                Application.DoEvents();
+                if (widget.Location != restored) throw new Exception("The saved position was not restored.");
+                moved = QuotaPocket.FitPosition(new Point(area.Left + 70, area.Top + 45), widget.Size, area);
+                var title = widget.Controls.OfType<Label>().Single(label => label.Text == widget.Text);
+                SendMouseEvent(title, "OnMouseDown", new Point(15, 8));
+                SendMouseEvent(title, "OnMouseMove", new Point(15 + moved.X - restored.X, 8 + moved.Y - restored.Y));
+                SendMouseEvent(title, "OnMouseUp", new Point(15, 8));
+                if (widget.Location != moved || File.ReadAllText(path) != moved.X + "," + moved.Y)
+                    throw new Exception("Title drag did not save the new position.");
+                widget.ContextMenuStrip.Items[0].PerformClick();
+                widget.ContextMenuStrip.Items[0].PerformClick();
+                var timer = Stopwatch.StartNew();
+                while (timer.ElapsedMilliseconds < 3300)
+                {
+                    Application.DoEvents();
+                    Thread.Sleep(25);
+                }
+                if (widget.Location != moved) throw new Exception("A refresh or tray toggle moved the widget.");
+                widget.Close();
+            }
+            using (var reopened = new QuotaPocket(true, path))
+            {
+                reopened.Show();
+                Application.DoEvents();
+                if (reopened.Location != moved) throw new Exception("The new location was not restored on restart.");
+                reopened.Close();
+            }
+        }
+        finally { File.Delete(path); }
+    }
+
+    private static void SendMouseEvent(Control widget, string method, Point location)
+    {
+        var handler = typeof(Control).GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic);
+        handler.Invoke(widget, new object[] { new MouseEventArgs(MouseButtons.Left, 1, location.X, location.Y, 0) });
     }
 
     private static void Check(QuotaSnapshot value, string provider, decimal session, decimal weekly, long sessionReset)

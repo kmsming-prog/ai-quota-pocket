@@ -1,10 +1,10 @@
-# AI 額度口袋 Windows 0.2.2
+# AI 額度口袋 Windows 0.2.3
 
-顯示 ChatGPT 帳號的 Codex 額度和 Claude 額度。小視窗靠在 Windows 工具列上方，可收合至通知區。
+顯示 ChatGPT 帳號的 Codex 額度和 Claude 額度。按住小視窗標題即可拖曳，包括移到另一個螢幕。程式會記住位置，也可以收合至通知區。
 
 ## 第一次使用
 
-1. [下載 ZIP](../downloads/ai-quota-pocket-windows-0.2.2.zip?raw=true)，解壓後開啟 `QuotaPocket.exe`。若舊版還在執行，先從 **⋯ → 結束** 關閉舊版。
+1. [下載 ZIP](../downloads/ai-quota-pocket-windows-0.2.3.zip?raw=true)，解壓後開啟 `QuotaPocket.exe`。若舊版還在執行，先從 **⋯ → 結束** 關閉舊版。
 2. 先安裝要連接的命令列工具。Codex 使用 [官方 Codex CLI](https://learn.chatgpt.com/docs/cli)。Claude 請依下方步驟裝好命令列版。
 3. 從 **⋯** 選 **連接 Codex** 或 **連接 Claude**，依官方工具的指示登入。首次授權可能會開啟瀏覽器。若命令列已登入，開啟小工具便會讀取。
 
@@ -24,6 +24,7 @@ winget install --id Anthropic.ClaudeCode --exact --source winget
 
 ## 額度更新
 
+- 初次開啟會顯示在右下角。選 **⋯ → 重設位置** 可移回右下角。
 - 開啟時讀取，之後每 5 分鐘更新。選 **⋯ → 立即更新** 可手動讀取。瀏覽器授權完成後，平時可關閉瀏覽器。
 - Codex 透過本機 App Server 的 `account/rateLimits/read` 取得整體額度。Claude 使用原生 Claude Code 的 `/usage`，依訂閱回傳的週期顯示資料。
 - 缺少的週期會顯示「—」。暫時斷線時保留這次啟動期間最後讀到的數字，超過 20 分鐘會標成過期。程式在記憶體保留比例及時間，登入憑證由各家官方工具管理。

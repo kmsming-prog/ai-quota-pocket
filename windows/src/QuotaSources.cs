@@ -65,8 +65,7 @@ internal sealed class QuotaSource
     {
         string executable = FindExecutable();
         if (executable == null) throw new QuotaReadException("未安裝");
-        string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "FeiyuCreativeStudio", "QuotaPocket");
+        string directory = QuotaData.StorageDirectory;
         Directory.CreateDirectory(directory);
         return await ReadFrom(executable, directory).ConfigureAwait(false);
     }
@@ -85,7 +84,7 @@ internal sealed class QuotaSource
                 await cli.Send(new
                 {
                     id = 1, method = "initialize",
-                    @params = new { clientInfo = new { name = "ai_quota_pocket", title = "AI Quota Pocket", version = "0.2.2" } }
+                    @params = new { clientInfo = new { name = "ai_quota_pocket", title = "AI Quota Pocket", version = "0.2.3" } }
                 }).ConfigureAwait(false);
                 return await cli.Reply(1).ConfigureAwait(false);
             }, 15000).ConfigureAwait(false);

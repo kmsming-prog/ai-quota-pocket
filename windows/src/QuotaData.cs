@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 internal sealed class QuotaSnapshot
 {
@@ -18,4 +19,6 @@ internal sealed class QuotaWindow
 internal static class QuotaData
 {
     internal static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+    internal static readonly string StorageDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FeiyuCreativeStudio", "QuotaPocket");
 }
