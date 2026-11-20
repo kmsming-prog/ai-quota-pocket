@@ -56,6 +56,7 @@ internal sealed class QuotaPocket : Form
         AutoScaleMode = AutoScaleMode.Dpi;
         BackColor = Background;
         ForeColor = Foreground;
+        Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
         ShowInTaskbar = false;
@@ -91,7 +92,7 @@ internal sealed class QuotaPocket : Form
         menu.Items.Add("結束", null, (sender, e) => Close());
         options.Click += (sender, e) => menu.Show(options, new Point(options.Width, options.Height), ToolStripDropDownDirection.AboveLeft);
         ContextMenuStrip = menu;
-        tray = new NotifyIcon { Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath), Text = Text, ContextMenuStrip = menu, Visible = true };
+        tray = new NotifyIcon { Icon = this.Icon, Text = Text, ContextMenuStrip = menu, Visible = true };
         tray.MouseClick += (sender, e) => { if (e.Button == MouseButtons.Left) ToggleVisibility(); };
 
         timer.Tick += async (sender, e) =>
@@ -233,29 +234,31 @@ internal sealed class QuotaPocket : Form
 
     internal static Form CreateClaudeInstallDialog()
     {
-        const string install = "winget install --id Anthropic.ClaudeCode --exact";
+        const string install = "winget install --id Anthropic.ClaudeCode --exact --source winget";
         var dialog = new Form
         {
             Text = "安裝 Claude Code 命令列版",
-            ClientSize = new Size(484, 200),
+            ClientSize = new Size(550, 200),
             FormBorderStyle = FormBorderStyle.FixedDialog,
             StartPosition = FormStartPosition.CenterParent,
             MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false,
             AutoScaleMode = AutoScaleMode.Dpi,
-            Font = new Font("Microsoft JhengHei UI", 9F)
+            Font = new Font("Microsoft JhengHei UI", 9F),
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath)
         };
         Color textColor = SystemColors.ControlText;
-        AddLabel(dialog, "額度口袋需要 Windows 原生的 Claude Code CLI。", 15, 11, 454, 22, 10f, FontStyle.Bold, textColor);
+        AddLabel(dialog, "額度口袋需要 Windows 原生的 Claude Code CLI。", 15, 11, 520, 22, 10f, FontStyle.Bold, textColor);
         AddLabel(dialog, "即使 Claude 桌面版已經有「Code」分頁，仍需另外安裝命令列版。",
-            15, 35, 454, 23, 9f, FontStyle.Regular, textColor);
-        AddLabel(dialog, "在 Windows 終端機或 PowerShell 執行這行", 15, 65, 454, 21, 9f, FontStyle.Regular, textColor);
+            15, 35, 520, 23, 9f, FontStyle.Regular, textColor);
+        AddLabel(dialog, "以一般權限開啟 Windows 終端機或 PowerShell，再執行這行",
+            15, 65, 520, 21, 9f, FontStyle.Regular, textColor);
         var command = new TextBox
         {
-            Text = install, ReadOnly = true, Location = new Point(15, 88), Size = new Size(452, 24),
+            Text = install, ReadOnly = true, Location = new Point(15, 88), Size = new Size(518, 24),
             Font = new Font("Consolas", 10f), AccessibleName = "Claude Code CLI 安裝指令"
         };
         dialog.Controls.Add(command);
-        AddLabel(dialog, "完成後，回到額度口袋點「連接 Claude」登入。", 15, 121, 454, 22, 9f, FontStyle.Regular, textColor);
+        AddLabel(dialog, "完成後，回到額度口袋點「連接 Claude」登入。", 15, 121, 520, 22, 9f, FontStyle.Regular, textColor);
 
         var copy = new Button { Text = "複製指令", Location = new Point(15, 155), Size = new Size(96, 30) };
         copy.Click += (sender, e) =>
@@ -269,7 +272,7 @@ internal sealed class QuotaPocket : Form
             try { Process.Start(QuotaSource.Claude.InstallUrl); }
             catch (Exception) { MessageBox.Show(dialog, "無法開啟預設瀏覽器。可以複製上方指令繼續安裝。", dialog.Text); }
         };
-        var close = new Button { Text = "關閉", Location = new Point(380, 155), Size = new Size(87, 30), DialogResult = DialogResult.Cancel };
+        var close = new Button { Text = "關閉", Location = new Point(446, 155), Size = new Size(87, 30), DialogResult = DialogResult.Cancel };
         dialog.Controls.AddRange(new Control[] { copy, guide, close });
         dialog.CancelButton = close;
         return dialog;

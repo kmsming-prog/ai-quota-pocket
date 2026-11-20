@@ -77,8 +77,9 @@ internal static class QuotaSourcesSmoke
         using (var install = QuotaPocket.CreateClaudeInstallDialog())
         {
             var command = install.Controls.OfType<TextBox>().Single();
-            if (!command.ReadOnly || command.Text != "winget install --id Anthropic.ClaudeCode --exact" ||
+            if (!command.ReadOnly || command.Text != "winget install --id Anthropic.ClaudeCode --exact --source winget" ||
                 !install.Controls.OfType<Label>().Any(label => label.Text.Contains("Claude 桌面版")) ||
+                !install.Controls.OfType<Label>().Any(label => label.Text.Contains("一般權限")) ||
                 !QuotaSource.Claude.InstallUrl.EndsWith("#install-on-native-windows", StringComparison.Ordinal))
                 throw new Exception("Claude installation guide did not identify the native CLI.");
             if (args.Length > 2)

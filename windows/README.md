@@ -1,22 +1,24 @@
-# AI 額度口袋 Windows 0.2.1
+# AI 額度口袋 Windows 0.2.2
 
 顯示 ChatGPT 帳號的 Codex 額度和 Claude 額度。小視窗靠在 Windows 工具列上方，可收合至通知區。
 
 ## 第一次使用
 
-1. [下載 ZIP](../downloads/ai-quota-pocket-windows-0.2.1.zip?raw=true)，解壓後開啟 `QuotaPocket.exe`。
+1. [下載 ZIP](../downloads/ai-quota-pocket-windows-0.2.2.zip?raw=true)，解壓後開啟 `QuotaPocket.exe`。若舊版還在執行，先從 **⋯ → 結束** 關閉舊版。
 2. 先安裝要連接的命令列工具。Codex 使用 [官方 Codex CLI](https://learn.chatgpt.com/docs/cli)。Claude 請依下方步驟裝好命令列版。
 3. 從 **⋯** 選 **連接 Codex** 或 **連接 Claude**，依官方工具的指示登入。首次授權可能會開啟瀏覽器。若命令列已登入，開啟小工具便會讀取。
 
 ### Claude Code 命令列版
 
-即使 Claude 桌面版已有「Code」分頁，小工具仍需要另外安裝 Windows 原生的 **Claude Code CLI**。在 Windows 終端機或 PowerShell 執行這行，或從小工具的安裝提示複製指令。
+即使 Claude 桌面版已有「Code」分頁，小工具仍需要另外安裝 Windows 原生的 **Claude Code CLI**。請從開始功能表以一般權限開啟 Windows 終端機或 PowerShell，再執行下方指令。小工具的安裝提示可以直接複製。
 
 ```powershell
-winget install --id Anthropic.ClaudeCode --exact
+winget install --id Anthropic.ClaudeCode --exact --source winget
 ```
 
-裝好後，回到小工具點 **⋯ → 連接 Claude**。沒有 WinGet 時，可以依 [官方 Windows 命令列安裝步驟](https://code.claude.com/docs/en/setup#install-on-native-windows) 使用 PowerShell 安裝。
+若 WinGet 提示「系統管理員內容不允許要求的作業」，請關閉該視窗，再以一般權限開啟 PowerShell 重試。`--source winget` 指定使用 WinGet 來源。沒有 WinGet 時，可以使用 [官方 Windows PowerShell 安裝方式](https://code.claude.com/docs/en/setup#install-on-native-windows)。
+
+裝好後，回到小工具點 **⋯ → 連接 Claude**。
 
 本版本使用原生 `codex.exe` 和 `claude.exe`。若安裝後仍顯示「未安裝」，可重新開啟小工具。自訂安裝位置可用 `QUOTA_POCKET_CODEX` 和 `QUOTA_POCKET_CLAUDE` 指定執行檔的完整路徑。
 
