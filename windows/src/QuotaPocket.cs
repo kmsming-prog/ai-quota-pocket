@@ -202,9 +202,15 @@ internal sealed class QuotaPocket : Form
             string executable = service.FindExecutable();
             if (executable == null)
             {
-                if (MessageBox.Show(this, "請先安裝官方 " + (service == QuotaSource.Claude ? "Claude Code" : "Codex CLI") +
-                    "。要開啟安裝說明嗎？", Text, MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                if (service == QuotaSource.Claude)
+                {
+                    using (var dialog = CreateClaudeInstallDialog()) dialog.ShowDialog(this);
+                }
+                else if (MessageBox.Show(this, "請先安裝官方命令列版 Codex CLI。要開啟安裝說明嗎？",
+                    Text, MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                {
                     Process.Start(service.InstallUrl);
+                }
                 return;
             }
             signingIn.Add(service);
@@ -223,6 +229,50 @@ internal sealed class QuotaPocket : Form
             wasSigningIn = signingIn.Remove(service);
         }
         if (wasSigningIn && !IsDisposed) await Update(service);
+    }
+
+    internal static Form CreateClaudeInstallDialog()
+    {
+        const string install = "winget install --id Anthropic.ClaudeCode --exact";
+        var dialog = new Form
+        {
+            Text = "安裝 Claude Code 命令列版",
+            ClientSize = new Size(484, 200),
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            StartPosition = FormStartPosition.CenterParent,
+            MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false,
+            AutoScaleMode = AutoScaleMode.Dpi,
+            Font = new Font("Microsoft JhengHei UI", 9F)
+        };
+        Color textColor = SystemColors.ControlText;
+        AddLabel(dialog, "額度口袋需要 Windows 原生的 Claude Code CLI。", 15, 11, 454, 22, 10f, FontStyle.Bold, textColor);
+        AddLabel(dialog, "即使 Claude 桌面版已經有「Code」分頁，仍需另外安裝命令列版。",
+            15, 35, 454, 23, 9f, FontStyle.Regular, textColor);
+        AddLabel(dialog, "在 Windows 終端機或 PowerShell 執行這行", 15, 65, 454, 21, 9f, FontStyle.Regular, textColor);
+        var command = new TextBox
+        {
+            Text = install, ReadOnly = true, Location = new Point(15, 88), Size = new Size(452, 24),
+            Font = new Font("Consolas", 10f), AccessibleName = "Claude Code CLI 安裝指令"
+        };
+        dialog.Controls.Add(command);
+        AddLabel(dialog, "完成後，回到額度口袋點「連接 Claude」登入。", 15, 121, 454, 22, 9f, FontStyle.Regular, textColor);
+
+        var copy = new Button { Text = "複製指令", Location = new Point(15, 155), Size = new Size(96, 30) };
+        copy.Click += (sender, e) =>
+        {
+            try { Clipboard.SetText(install); copy.Text = "已複製"; }
+            catch (System.Runtime.InteropServices.ExternalException) { command.Focus(); command.SelectAll(); }
+        };
+        var guide = new Button { Text = "官方安裝步驟", Location = new Point(119, 155), Size = new Size(128, 30) };
+        guide.Click += (sender, e) =>
+        {
+            try { Process.Start(QuotaSource.Claude.InstallUrl); }
+            catch (Exception) { MessageBox.Show(dialog, "無法開啟預設瀏覽器。可以複製上方指令繼續安裝。", dialog.Text); }
+        };
+        var close = new Button { Text = "關閉", Location = new Point(380, 155), Size = new Size(87, 30), DialogResult = DialogResult.Cancel };
+        dialog.Controls.AddRange(new Control[] { copy, guide, close });
+        dialog.CancelButton = close;
+        return dialog;
     }
 
     internal static Label AddLabel(Control parent, string text, int x, int y, int width, int height,

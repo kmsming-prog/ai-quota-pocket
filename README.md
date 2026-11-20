@@ -5,7 +5,7 @@
 | 平台 | 安裝檔 | 原始碼與說明 |
 | --- | --- | --- |
 | Android 8.0+（ARM64、x86-64） | [下載 APK 1.4.6](downloads/ai-quota-pocket-1.4.6.apk?raw=true) | [Android](android/) |
-| Windows 10／11 | [下載 ZIP 0.2.0](downloads/ai-quota-pocket-windows-0.2.0.zip?raw=true) | [Windows](windows/) |
+| Windows 10／11 | [下載 ZIP 0.2.1](downloads/ai-quota-pocket-windows-0.2.1.zip?raw=true) | [Windows](windows/) |
 | iPhone | 開發參考 | [WidgetKit 移植說明](docs/ios-port.md) |
 
 ![Windows 小工具使用示範資料顯示兩個服務的當期和每週額度](docs/windows-preview.png)

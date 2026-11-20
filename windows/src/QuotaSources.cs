@@ -14,7 +14,7 @@ internal sealed class QuotaSource
     internal static readonly QuotaSource Codex = new QuotaSource(
         "chatgpt", "Codex", "QUOTA_POCKET_CODEX", "codex", "https://learn.chatgpt.com/docs/cli");
     internal static readonly QuotaSource Claude = new QuotaSource(
-        "claude", "Claude", "QUOTA_POCKET_CLAUDE", "claude", "https://code.claude.com/docs/en/setup");
+        "claude", "Claude", "QUOTA_POCKET_CLAUDE", "claude", "https://code.claude.com/docs/en/setup#install-on-native-windows");
 
     internal readonly string Provider;
     internal readonly string Label;
@@ -38,8 +38,10 @@ internal sealed class QuotaSource
 
         string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string programs = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator)
-            .Concat(new[] { Path.Combine(profile, @".local\bin"), Path.Combine(local, @"Microsoft\WinGet\Links") }))
+            .Concat(new[] { Path.Combine(profile, @".local\bin"), Path.Combine(local, @"Microsoft\WinGet\Links"),
+                Path.Combine(programs, @"WinGet\Links") }))
         {
             string clean = directory.Trim().Trim('"');
             if (clean.Length == 0 || !Path.IsPathRooted(clean)) continue;
@@ -83,7 +85,7 @@ internal sealed class QuotaSource
                 await cli.Send(new
                 {
                     id = 1, method = "initialize",
-                    @params = new { clientInfo = new { name = "ai_quota_pocket", title = "AI Quota Pocket", version = "0.2.0" } }
+                    @params = new { clientInfo = new { name = "ai_quota_pocket", title = "AI Quota Pocket", version = "0.2.1" } }
                 }).ConfigureAwait(false);
                 return await cli.Reply(1).ConfigureAwait(false);
             }, 15000).ConfigureAwait(false);

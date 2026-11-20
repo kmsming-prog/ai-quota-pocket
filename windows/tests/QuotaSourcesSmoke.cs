@@ -74,6 +74,25 @@ internal static class QuotaSourcesSmoke
 
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+        using (var install = QuotaPocket.CreateClaudeInstallDialog())
+        {
+            var command = install.Controls.OfType<TextBox>().Single();
+            if (!command.ReadOnly || command.Text != "winget install --id Anthropic.ClaudeCode --exact" ||
+                !install.Controls.OfType<Label>().Any(label => label.Text.Contains("Claude 桌面版")) ||
+                !QuotaSource.Claude.InstallUrl.EndsWith("#install-on-native-windows", StringComparison.Ordinal))
+                throw new Exception("Claude installation guide did not identify the native CLI.");
+            if (args.Length > 2)
+            {
+                install.Show();
+                Application.DoEvents();
+                using (var bitmap = new Bitmap(install.Width, install.Height))
+                {
+                    install.DrawToBitmap(bitmap, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+                    bitmap.Save(args[2], ImageFormat.Png);
+                }
+                install.Close();
+            }
+        }
         using (var widget = new QuotaPocket(true))
         {
             widget.Show();
